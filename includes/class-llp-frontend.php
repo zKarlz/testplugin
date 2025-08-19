@@ -1,0 +1,105 @@
+<?php
+/**
+ * Frontend hooks and rendering.
+ *
+ * @package WooLaserPhotoMockup
+ */
+
+namespace LLP;
+
+use LLP\Traits\Singleton;
+
+class Frontend {
+    use Singleton;
+
+    private function __construct() {
+        add_action('woocommerce_before_add_to_cart_button', [$this, 'render_customizer']);
+        add_filter('woocommerce_add_to_cart_validation', [$this, 'validate_before_add'], 10, 5);
+        add_filter('woocommerce_add_cart_item_data', [$this, 'attach_cart_item_data'], 10, 3);
+        add_filter('woocommerce_get_item_data', [$this, 'display_cart_item_data'], 10, 2);
+        add_filter('woocommerce_get_cart_item_from_session', [$this, 'restore_cart_item'], 10, 2);
+        add_action('wp_enqueue_scripts', [$this, 'scripts']);
+    }
+
+    /**
+     * Render the customer customizer template.
+     */
+    public function render_customizer(): void {
+        wc_get_template('single-product/customizer.php', [], '', LLP_DIR . 'templates/');
+    }
+
+    /**
+     * Enqueue frontend scripts.
+     */
+    public function scripts(): void {
+        if (!is_product()) {
+            return;
+        }
+        wp_enqueue_style('llp-frontend', LLP_URL . 'assets/css/frontend.css', [], LLP_VER);
+        wp_enqueue_script('llp-frontend', LLP_URL . 'assets/js/frontend.js', [], LLP_VER, true);
+        wp_localize_script('llp-frontend', 'llp_frontend', [
+            'nonce'        => wp_create_nonce('llp'),
+            'upload_url'   => rest_url('llp/v1/upload'),
+            'finalize_url' => rest_url('llp/v1/finalize'),
+        ]);
+    }
+
+    /**
+     * Validate before add to cart.
+     */
+    public function validate_before_add(bool $passed, int $product_id, int $quantity, $variation_id = 0, $variations = null): bool {
+        if (empty($_POST['_llp_asset_id']) || empty($_POST['_llp_transform'])) {
+            wc_add_notice(__('Please upload and position your photo.', 'llp'), 'error');
+            return false;
+        }
+
+        $asset_dir = Storage::instance()->asset_dir(sanitize_text_field($_POST['_llp_asset_id']));
+        if (!file_exists($asset_dir . 'composite.png')) {
+            wc_add_notice(__('Unable to locate uploaded image. Please try again.', 'llp'), 'error');
+            return false;
+        }
+        return $passed;
+    }
+
+    /**
+     * Attach LLP data to cart item.
+     */
+    public function attach_cart_item_data(array $cart_item_data, int $product_id, int $variation_id): array {
+        if (isset($_POST['_llp_asset_id'])) {
+            $cart_item_data['_llp_asset_id']  = sanitize_text_field(wp_unslash($_POST['_llp_asset_id']));
+            $cart_item_data['_llp_transform'] = wp_unslash($_POST['_llp_transform']);
+            $asset_id = $cart_item_data['_llp_asset_id'];
+            $sec = Security::instance();
+            $cart_item_data['_llp_original_url']  = $sec->sign_url($asset_id, 'original.png');
+            $cart_item_data['_llp_composite_url'] = $sec->sign_url($asset_id, 'composite.png');
+            $cart_item_data['_llp_thumb_url']     = $sec->sign_url($asset_id, 'thumb.jpg');
+        }
+        return $cart_item_data;
+    }
+
+    /**
+     * Display item data in cart/checkout.
+     */
+    public function display_cart_item_data(array $item_data, array $cart_item): array {
+        if (!empty($cart_item['_llp_asset_id'])) {
+            $thumb = Security::instance()->sign_url($cart_item['_llp_asset_id'], 'thumb.jpg');
+            $item_data[] = [
+                'name'  => __('Preview', 'llp'),
+                'value' => '<img src="' . esc_url($thumb) . '" alt="" style="max-width:80px;" />',
+            ];
+        }
+        return $item_data;
+    }
+
+    /**
+     * Restore cart item from session.
+     */
+    public function restore_cart_item(array $cart_item, array $session_values): array {
+        foreach (['_llp_asset_id', '_llp_transform', '_llp_original_url', '_llp_composite_url', '_llp_thumb_url'] as $key) {
+            if (isset($session_values[$key])) {
+                $cart_item[$key] = $session_values[$key];
+            }
+        }
+        return $cart_item;
+    }
+}
