@@ -40,11 +40,35 @@ class Cron {
         $cutoff = time() - DAY_IN_SECONDS * $days;
         $dir = Storage::instance()->base_dir();
         foreach (glob($dir . '*/', GLOB_ONLYDIR) as $asset_dir) {
+            if (basename($asset_dir) === 'tmp') {
+                continue;
+            }
             if (filemtime($asset_dir) < $cutoff) {
                 foreach (glob($asset_dir . '*') as $file) {
                     @unlink($file);
                 }
                 @rmdir($asset_dir);
+            }
+        }
+
+        $this->purge_temp();
+    }
+
+    /**
+     * Remove abandoned temporary uploads.
+     */
+    private function purge_temp(): void {
+        $cutoff = time() - DAY_IN_SECONDS;
+        $dir    = trailingslashit(Storage::instance()->base_dir() . 'tmp/');
+        if (!file_exists($dir)) {
+            return;
+        }
+        foreach (glob($dir . '*/', GLOB_ONLYDIR) as $tmp_dir) {
+            if (filemtime($tmp_dir) < $cutoff) {
+                foreach (glob($tmp_dir . '*') as $file) {
+                    @unlink($file);
+                }
+                @rmdir($tmp_dir);
             }
         }
     }
