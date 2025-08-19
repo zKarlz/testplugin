@@ -128,7 +128,7 @@ class Frontend {
      * Restore cart item from session.
      */
     public function restore_cart_item(array $cart_item, array $session_values): array {
-        foreach (['_llp_asset_id', '_llp_transform', '_llp_original_sha256', '_llp_processor', '_llp_variation_settings'] as $key) {
+        foreach (['_llp_asset_id', '_llp_transform', '_llp_original_url', '_llp_composite_url', '_llp_thumb_url', '_llp_original_sha256', '_llp_processor', '_llp_variation_settings'] as $key) {
             if (isset($session_values[$key])) {
                 $cart_item[$key] = $session_values[$key];
             }
