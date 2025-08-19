@@ -26,7 +26,7 @@ class Security {
      */
     public function process_upload(array $file, string $dest, int $variation_id) {
         $settings = Settings::instance();
-        $allowed  = $settings->get('allowed_mimes');
+        $allowed  = apply_filters('llp_allowed_mimes', (array) $settings->get('allowed_mimes'));
         $max_size = (int) $settings->get('max_file_size');
         if ($file['error'] || $file['size'] > $max_size) {
             return new \WP_Error('upload_error', __('Upload failed.', 'llp'));

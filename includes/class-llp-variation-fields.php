@@ -49,6 +49,7 @@ class Variation_Fields {
         $aspect = get_post_meta($variation->ID, '_llp_aspect_ratio', true);
         $minres = json_decode((string) get_post_meta($variation->ID, '_llp_min_resolution', true), true) ?: [];
         $dpi    = get_post_meta($variation->ID, '_llp_output_dpi', true);
+        $dpi    = apply_filters('llp_output_dpi', $dpi, $variation->ID);
 
         echo '<div class="llp-variation-fields">';
         echo '<p class="form-field"><label for="llp_base_image_id_' . $loop . '">' . esc_html__('Base image ID', 'llp') . '</label>';

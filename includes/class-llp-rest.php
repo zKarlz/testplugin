@@ -74,7 +74,8 @@ class REST {
             return new \WP_Error('invalid_nonce', __('Invalid nonce', 'llp'), ['status' => 403]);
         }
         $settings = Settings::instance();
-        if ('private' === $settings->get('storage')) {
+        $storage  = apply_filters('llp_storage_mode', $settings->get('storage'));
+        if ('private' === $storage) {
             if (!is_user_logged_in() || !current_user_can('upload_files')) {
                 return new \WP_Error('forbidden', __('Authentication required.', 'llp'), ['status' => 401]);
             }
@@ -178,7 +179,7 @@ class REST {
         $base_id   = (int) get_post_meta($variation_id, '_llp_base_image_id', true);
         $mask_id   = (int) get_post_meta($variation_id, '_llp_mask_image_id', true);
         $bounds    = json_decode((string) get_post_meta($variation_id, '_llp_bounds', true), true) ?: [];
-        $dpi       = (int) get_post_meta($variation_id, '_llp_output_dpi', true) ?: 300;
+        $dpi       = (int) apply_filters('llp_output_dpi', get_post_meta($variation_id, '_llp_output_dpi', true) ?: 300, $variation_id);
 
         if (!$base_id || empty($bounds)) {
             return new \WP_Error('missing_meta', __('Variation not configured', 'llp'), ['status' => 400]);

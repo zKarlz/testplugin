@@ -23,7 +23,7 @@ class Renderer {
         $user_path    = $args['user_img'];
         $bounds       = $args['bounds'];
         $transform    = $args['transform'];
-        $output_dpi   = $args['output_dpi'] ?? 300;
+        $output_dpi   = (int) apply_filters('llp_output_dpi', $args['output_dpi'] ?? 300);
         $composite_out= $args['out_composite'];
         $thumb_out    = $args['out_thumb'];
 
