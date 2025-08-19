@@ -16,8 +16,10 @@ class Renderer {
      * Render composite image based on settings.
      *
      * @param array $args Rendering arguments.
+     *
+     * @return string|false Renderer type on success, false on failure.
      */
-    public function render(array $args): bool {
+    public function render(array $args) {
         $base_path    = $args['base_path'];
         $mask_path    = $args['mask_path'] ?? null;
         $user_path    = $args['user_img'];
@@ -68,7 +70,7 @@ class Renderer {
                 $thumb->thumbnailImage(800, 0);
                 $thumb->setImageFormat('jpeg');
                 $thumb->writeImage($thumb_out);
-                return true;
+                return 'imagick';
             } catch (\Exception $e) {
                 return false;
             }
@@ -100,6 +102,6 @@ class Renderer {
         imagedestroy($thumb);
         imagedestroy($user);
         imagedestroy($base);
-        return true;
+        return 'gd';
     }
 }

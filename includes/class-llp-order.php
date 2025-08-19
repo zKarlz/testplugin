@@ -23,7 +23,7 @@ class Order {
      * Persist order item meta on checkout.
      */
     public function persist_order_item_meta($item, string $cart_item_key, array $values, $order_id): void {
-        $keys = ['_llp_asset_id', '_llp_transform', '_llp_original_url', '_llp_composite_url', '_llp_thumb_url'];
+        $keys = ['_llp_asset_id', '_llp_transform', '_llp_original_url', '_llp_composite_url', '_llp_thumb_url', '_llp_original_sha256', '_llp_processor', '_llp_variation_settings'];
         foreach ($keys as $key) {
             if (isset($values[$key])) {
                 $item->add_meta_data($key, $values[$key], true);
