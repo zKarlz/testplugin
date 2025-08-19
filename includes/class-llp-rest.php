@@ -70,15 +70,16 @@ class REST {
      * Permission check for mutating requests.
      */
     public function permission_check(\WP_REST_Request $request) {
-        if (!wp_verify_nonce($request->get_param('nonce'), 'llp')) {
+        $nonce = $request->get_param('nonce');
+        if (!wp_verify_nonce($nonce, 'llp')) {
             return new \WP_Error('invalid_nonce', __('Invalid nonce', 'llp'), ['status' => 403]);
         }
-        $settings = Settings::instance();
-        if ('private' === $settings->get('storage')) {
-            if (!is_user_logged_in() || !current_user_can('upload_files')) {
-                return new \WP_Error('forbidden', __('Authentication required.', 'llp'), ['status' => 401]);
-            }
+
+        $allowed = apply_filters('llp_rest_permission', true, $request);
+        if (!$allowed) {
+            return new \WP_Error('forbidden', __('Uploads are disabled.', 'llp'), ['status' => 403]);
         }
+
         return true;
     }
 
