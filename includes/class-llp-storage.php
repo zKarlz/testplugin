@@ -27,6 +27,19 @@ class Storage {
     public function base_dir(): string {
         $dir = LLP_UPLOAD_DIR;
         $this->ensure($dir);
+
+        if ('private' === Settings::instance()->get('storage')) {
+            $htaccess = $dir . '.htaccess';
+            if (!file_exists($htaccess)) {
+                file_put_contents($htaccess, "Require all denied\n");
+            }
+            $webconfig = $dir . 'web.config';
+            if (!file_exists($webconfig)) {
+                $deny = '<configuration><system.webServer><authorization><deny users="*" /></authorization></system.webServer></configuration>';
+                file_put_contents($webconfig, $deny);
+            }
+        }
+
         return $dir;
     }
 

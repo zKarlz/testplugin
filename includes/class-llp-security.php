@@ -82,6 +82,11 @@ class Security {
      * Generate a signed URL for downloading an asset.
      */
     public function sign_url(string $asset_id, string $file, int $expires = 0): string {
+        $settings = Settings::instance();
+        if ('public' === $settings->get('storage')) {
+            return Storage::instance()->asset_url($asset_id, $file);
+        }
+
         $expires = $expires ?: time() + DAY_IN_SECONDS;
         $secret  = wp_salt('llp');
         $token   = hash_hmac('sha256', $asset_id . '|' . $file . '|' . $expires, $secret);

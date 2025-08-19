@@ -38,10 +38,11 @@ class Order {
         if ($plain_text) {
             return;
         }
+        $sec = Security::instance();
         foreach ($order->get_items() as $item) {
             $asset_id = $item->get_meta('_llp_asset_id');
             if ($asset_id) {
-                $thumb = Security::instance()->sign_url($asset_id, 'thumb.jpg');
+                $thumb = $sec->sign_url($asset_id, 'thumb.jpg');
                 wc_get_template('emails/line-item-preview.php', ['thumb_url' => $thumb], '', LLP_DIR . 'templates/');
             }
         }
@@ -62,10 +63,11 @@ class Order {
         if (!$order) {
             return;
         }
+        $sec = Security::instance();
         foreach ($order->get_items() as $item) {
             $asset_id = $item->get_meta('_llp_asset_id');
             if ($asset_id) {
-                $thumb = Security::instance()->sign_url($asset_id, 'thumb.jpg');
+                $thumb = $sec->sign_url($asset_id, 'thumb.jpg');
                 echo '<p><img src="' . esc_url($thumb) . '" style="max-width:100%;" /></p>';
             }
         }

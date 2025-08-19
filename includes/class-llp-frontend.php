@@ -90,10 +90,15 @@ class Frontend {
             $cart_item_data['_llp_asset_id']  = sanitize_text_field(wp_unslash($_POST['_llp_asset_id']));
             $cart_item_data['_llp_transform'] = wp_unslash($_POST['_llp_transform']);
             $asset_id = $cart_item_data['_llp_asset_id'];
-            $sec = Security::instance();
-            $cart_item_data['_llp_original_url']  = $sec->sign_url($asset_id, 'original.png');
-            $cart_item_data['_llp_composite_url'] = $sec->sign_url($asset_id, 'composite.png');
-            $cart_item_data['_llp_thumb_url']     = $sec->sign_url($asset_id, 'thumb.jpg');
+            $sec      = Security::instance();
+            $files    = [
+                '_llp_original_url'  => 'original.png',
+                '_llp_composite_url' => 'composite.png',
+                '_llp_thumb_url'     => 'thumb.jpg',
+            ];
+            foreach ($files as $key => $file) {
+                $cart_item_data[$key] = $sec->sign_url($asset_id, $file);
+            }
         }
         return $cart_item_data;
     }
@@ -116,10 +121,17 @@ class Frontend {
      * Restore cart item from session.
      */
     public function restore_cart_item(array $cart_item, array $session_values): array {
-        foreach (['_llp_asset_id', '_llp_transform', '_llp_original_url', '_llp_composite_url', '_llp_thumb_url'] as $key) {
+        foreach (['_llp_asset_id', '_llp_transform'] as $key) {
             if (isset($session_values[$key])) {
                 $cart_item[$key] = $session_values[$key];
             }
+        }
+        if (!empty($cart_item['_llp_asset_id'])) {
+            $sec      = Security::instance();
+            $asset_id = $cart_item['_llp_asset_id'];
+            $cart_item['_llp_original_url']  = $sec->sign_url($asset_id, 'original.png');
+            $cart_item['_llp_composite_url'] = $sec->sign_url($asset_id, 'composite.png');
+            $cart_item['_llp_thumb_url']     = $sec->sign_url($asset_id, 'thumb.jpg');
         }
         return $cart_item;
     }
