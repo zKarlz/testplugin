@@ -144,6 +144,7 @@
                 .then(r => r.json())
                 .then(res => {
                     if (res && res.thumb_url) {
+                        // thumb_url may be a direct asset link in public storage mode
                         preview.innerHTML = '<img src="' + res.thumb_url + '" alt="" />';
                         if (addBtn) { addBtn.disabled = false; }
                     }

@@ -91,9 +91,9 @@ class Frontend {
             $cart_item_data['_llp_transform'] = wp_unslash($_POST['_llp_transform']);
             $asset_id = $cart_item_data['_llp_asset_id'];
             $sec = Security::instance();
-            $cart_item_data['_llp_original_url']  = $sec->sign_url($asset_id, 'original.png');
-            $cart_item_data['_llp_composite_url'] = $sec->sign_url($asset_id, 'composite.png');
-            $cart_item_data['_llp_thumb_url']     = $sec->sign_url($asset_id, 'thumb.jpg');
+            $cart_item_data['_llp_original_url']  = $sec->file_url($asset_id, 'original.png');
+            $cart_item_data['_llp_composite_url'] = $sec->file_url($asset_id, 'composite.png');
+            $cart_item_data['_llp_thumb_url']     = $sec->file_url($asset_id, 'thumb.jpg');
         }
         return $cart_item_data;
     }
@@ -103,7 +103,7 @@ class Frontend {
      */
     public function display_cart_item_data(array $item_data, array $cart_item): array {
         if (!empty($cart_item['_llp_asset_id'])) {
-            $thumb = Security::instance()->sign_url($cart_item['_llp_asset_id'], 'thumb.jpg');
+            $thumb = Security::instance()->file_url($cart_item['_llp_asset_id'], 'thumb.jpg');
             $item_data[] = [
                 'name'  => __('Preview', 'llp'),
                 'value' => '<img src="' . esc_url($thumb) . '" alt="" style="max-width:80px;" />',

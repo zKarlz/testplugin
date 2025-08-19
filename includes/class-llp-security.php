@@ -79,6 +79,17 @@ class Security {
     }
 
     /**
+     * Generate a URL for downloading an asset respecting storage mode.
+     */
+    public function file_url(string $asset_id, string $file, int $expires = 0): string {
+        $settings = Settings::instance();
+        if ('public' === $settings->get('storage')) {
+            return Storage::instance()->asset_url($asset_id, $file);
+        }
+        return $this->sign_url($asset_id, $file, $expires);
+    }
+
+    /**
      * Generate a signed URL for downloading an asset.
      */
     public function sign_url(string $asset_id, string $file, int $expires = 0): string {

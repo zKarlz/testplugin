@@ -221,9 +221,9 @@ class REST {
         $sec = Security::instance();
         return rest_ensure_response([
             'asset_id'      => $asset_id,
-            'original_url'  => $sec->sign_url($asset_id, 'original.png'),
-            'composite_url' => $sec->sign_url($asset_id, 'composite.png'),
-            'thumb_url'     => $sec->sign_url($asset_id, 'thumb.jpg'),
+            'original_url'  => $sec->file_url($asset_id, 'original.png'),
+            'composite_url' => $sec->file_url($asset_id, 'composite.png'),
+            'thumb_url'     => $sec->file_url($asset_id, 'thumb.jpg'),
         ]);
     }
 
