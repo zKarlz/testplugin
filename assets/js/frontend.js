@@ -44,6 +44,42 @@
             if (maxY < 0) { state.ty = 0; } else { state.ty = Math.max(Math.min(state.ty, maxY), -maxY); }
         }
 
+        function clearFit(){
+            assetField.value = '';
+            transformField.value = '';
+            preview.innerHTML = '';
+            if (addBtn) { addBtn.disabled = true; }
+            editor.style.display = 'none';
+            state.img = null;
+            state.bounds = null;
+            fileInput.value = '';
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+        }
+
+        const variationForm = document.querySelector('form.variations_form');
+        if (variationForm && window.jQuery) {
+            const $form = window.jQuery(variationForm);
+            let lastVariationId = 0;
+            let lastAttrs = {};
+            $form.on('found_variation', function(event, variation){
+                const newId = variation && variation.variation_id ? parseInt(variation.variation_id) : 0;
+                if (assetField.value && lastVariationId && newId !== lastVariationId) {
+                    if (!window.confirm('Changing the variation will discard your current fit. Continue?')) {
+                        for (const name in lastAttrs) {
+                            const sel = $form.find('select[name="' + name + '"]');
+                            if (sel.length) { sel.val(lastAttrs[name]); }
+                        }
+                        $form.trigger('check_variations');
+                        return;
+                    }
+                    clearFit();
+                }
+                lastVariationId = newId;
+                lastAttrs = {};
+                $form.find('select').each(function(){ lastAttrs[this.name] = this.value; });
+            });
+        }
+
         canvas.addEventListener('mousedown', e => {
             state.dragging = true;
             state.lastX = e.offsetX;
