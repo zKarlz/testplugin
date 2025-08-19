@@ -1,0 +1,8 @@
+.llp-variation-fields .llp-media-select{margin-left:5px;}
+.llp-editor-modal{position:fixed;top:0;left:0;width:100%;height:100%;z-index:100000;display:flex;align-items:center;justify-content:center;}
+.llp-editor-backdrop{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);}
+.llp-editor-content{position:relative;background:#fff;padding:10px;z-index:100001;max-width:90%;max-height:90%;overflow:auto;}
+.llp-editor-stage{position:relative;display:inline-block;}
+.llp-editor-base{max-width:100%;height:auto;display:block;}
+.llp-rect{position:absolute;border:2px dashed #f00;box-sizing:border-box;cursor:move;}
+.llp-editor-content .llp-editor-close{margin-top:10px;}
