@@ -59,6 +59,9 @@ class Storage {
      * Asset URL.
      */
     public function asset_url(string $asset_id, string $file): string {
+        if (Settings::instance()->get('storage') === 'private') {
+            return Security::instance()->sign_url($asset_id, $file);
+        }
         return trailingslashit($this->base_url()) . $asset_id . '/' . $file;
     }
 
