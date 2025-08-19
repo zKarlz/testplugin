@@ -99,6 +99,17 @@ class Frontend {
             foreach ($files as $key => $file) {
                 $cart_item_data[$key] = $sec->sign_url($asset_id, $file);
             }
+
+            $meta = json_decode(@file_get_contents(Storage::instance()->asset_dir($asset_id) . 'meta.json'), true) ?: [];
+            $cart_item_data['_llp_original_sha256'] = $meta['sha256'] ?? '';
+            $cart_item_data['_llp_processor']       = $meta['renderer'] ?? '';
+
+            $keys = ['_llp_base_image_id', '_llp_mask_image_id', '_llp_bounds', '_llp_output_dpi', '_llp_aspect_ratio', '_llp_min_resolution'];
+            $settings = [];
+            foreach ($keys as $key) {
+                $settings[$key] = get_post_meta($variation_id, $key, true);
+            }
+            $cart_item_data['_llp_variation_settings'] = $settings;
         }
         return $cart_item_data;
     }
@@ -121,7 +132,7 @@ class Frontend {
      * Restore cart item from session.
      */
     public function restore_cart_item(array $cart_item, array $session_values): array {
-        foreach (['_llp_asset_id', '_llp_transform'] as $key) {
+        foreach (['_llp_asset_id', '_llp_transform', '_llp_original_sha256', '_llp_processor', '_llp_variation_settings'] as $key) {
             if (isset($session_values[$key])) {
                 $cart_item[$key] = $session_values[$key];
             }
