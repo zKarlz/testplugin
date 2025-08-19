@@ -85,28 +85,77 @@ class REST {
         if (!wp_verify_nonce($request->get_param('nonce'), 'llp')) {
             return new \WP_Error('invalid_nonce', __('Invalid nonce', 'llp'), ['status' => 403]);
         }
-        $asset_id    = sanitize_text_field($request->get_param('asset_id'));
+        $asset_id     = sanitize_text_field($request->get_param('asset_id'));
         $variation_id = absint($request->get_param('variation_id'));
-        $transform   = json_decode($request->get_param('transform', ''), true);
+        $transform    = json_decode($request->get_param('transform', ''), true);
 
-        if (!$asset_id || !$variation_id || empty($transform)) {
+        if (!$asset_id || !$variation_id || !is_array($transform)) {
             return new \WP_Error('missing_data', __('Missing data', 'llp'), ['status' => 400]);
         }
+
+        foreach (['scale', 'rotation', 'tx', 'ty', 'crop'] as $key) {
+            if (!array_key_exists($key, $transform)) {
+                return new \WP_Error('invalid_transform', __('Invalid transform data', 'llp'), ['status' => 400]);
+            }
+        }
+
+        if (!is_array($transform['crop'])) {
+            return new \WP_Error('invalid_transform', __('Invalid crop data', 'llp'), ['status' => 400]);
+        }
+        foreach (['x', 'y', 'w', 'h'] as $key) {
+            if (!array_key_exists($key, $transform['crop'])) {
+                return new \WP_Error('invalid_transform', __('Invalid crop data', 'llp'), ['status' => 400]);
+            }
+            $transform['crop'][$key] = (int) $transform['crop'][$key];
+        }
+        if ($transform['crop']['w'] <= 0 || $transform['crop']['h'] <= 0) {
+            return new \WP_Error('invalid_transform', __('Invalid crop dimensions', 'llp'), ['status' => 400]);
+        }
+
+        $transform['scale']    = (float) $transform['scale'];
+        if ($transform['scale'] <= 0 || $transform['scale'] > 10) {
+            return new \WP_Error('invalid_transform', __('Invalid scale value', 'llp'), ['status' => 400]);
+        }
+        $transform['rotation'] = max(min((float) $transform['rotation'], 360), 0);
+        $transform['tx']       = (float) $transform['tx'];
+        $transform['ty']       = (float) $transform['ty'];
 
         $storage   = Storage::instance();
         $tmp_dir   = $storage->temp_dir($asset_id);
         $final_dir = $storage->asset_dir($asset_id);
-        @rename($tmp_dir . 'original.png', $final_dir . 'original.png');
+        if (!@rename($tmp_dir . 'original.png', $final_dir . 'original.png')) {
+            return new \WP_Error('move_failed', __('Could not move uploaded file', 'llp'), ['status' => 500]);
+        }
 
-        $base_id = (int) get_post_meta($variation_id, '_llp_base_image_id', true);
-        $mask_id = (int) get_post_meta($variation_id, '_llp_mask_image_id', true);
-        $base_path = get_attached_file($base_id);
-        $mask_path = $mask_id ? get_attached_file($mask_id) : null;
+        $base_id   = (int) get_post_meta($variation_id, '_llp_base_image_id', true);
+        $mask_id   = (int) get_post_meta($variation_id, '_llp_mask_image_id', true);
         $bounds    = json_decode((string) get_post_meta($variation_id, '_llp_bounds', true), true) ?: [];
         $dpi       = (int) get_post_meta($variation_id, '_llp_output_dpi', true) ?: 300;
 
+        if (!$base_id || empty($bounds)) {
+            return new \WP_Error('missing_meta', __('Variation not configured', 'llp'), ['status' => 400]);
+        }
+        foreach (['x', 'y', 'w', 'h'] as $key) {
+            if (!isset($bounds[$key])) {
+                return new \WP_Error('missing_meta', __('Bounds incomplete', 'llp'), ['status' => 400]);
+            }
+        }
+
+        $base_path = get_attached_file($base_id);
+        if (!$base_path || !file_exists($base_path)) {
+            return new \WP_Error('missing_base', __('Base image not found', 'llp'), ['status' => 400]);
+        }
+
+        $mask_path = null;
+        if ($mask_id) {
+            $mask_path = get_attached_file($mask_id);
+            if (!$mask_path || !file_exists($mask_path)) {
+                return new \WP_Error('missing_mask', __('Mask image not found', 'llp'), ['status' => 400]);
+            }
+        }
+
         $renderer = Renderer::instance();
-        $renderer->render([
+        $result = $renderer->render([
             'base_path'    => $base_path,
             'mask_path'    => $mask_path,
             'user_img'     => $final_dir . 'original.png',
@@ -116,6 +165,10 @@ class REST {
             'out_composite'=> $final_dir . 'composite.png',
             'out_thumb'    => $final_dir . 'thumb.jpg',
         ]);
+
+        if (!$result) {
+            return new \WP_Error('render_failed', __('Rendering failed', 'llp'), ['status' => 500]);
+        }
 
         $sec = Security::instance();
         return rest_ensure_response([
