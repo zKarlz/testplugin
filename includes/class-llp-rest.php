@@ -118,6 +118,12 @@ class REST {
         if (is_wp_error($info)) {
             return $info;
         }
+
+        // Persist hash for later use.
+        file_put_contents($dir . 'meta.json', wp_json_encode([
+            'sha256' => $info['sha256'],
+        ]));
+
         return rest_ensure_response([
             'asset_id' => $asset_id,
             'width'    => $info['width'],
@@ -175,6 +181,9 @@ class REST {
             return new \WP_Error('move_failed', __('Could not move uploaded file', 'llp'), ['status' => 500]);
         }
 
+        $tmp_meta = json_decode(@file_get_contents($tmp_dir . 'meta.json'), true) ?: [];
+        $sha256   = $tmp_meta['sha256'] ?? hash_file('sha256', $final_dir . 'original.png');
+
         $base_id   = (int) get_post_meta($variation_id, '_llp_base_image_id', true);
         $mask_id   = (int) get_post_meta($variation_id, '_llp_mask_image_id', true);
         $bounds    = json_decode((string) get_post_meta($variation_id, '_llp_bounds', true), true) ?: [];
@@ -203,7 +212,7 @@ class REST {
         }
 
         $renderer = Renderer::instance();
-        $result = $renderer->render([
+        $renderer_type = $renderer->render([
             'base_path'    => $base_path,
             'mask_path'    => $mask_path,
             'user_img'     => $final_dir . 'original.png',
@@ -214,9 +223,16 @@ class REST {
             'out_thumb'    => $final_dir . 'thumb.jpg',
         ]);
 
-        if (!$result) {
+        if (!$renderer_type) {
             return new \WP_Error('render_failed', __('Rendering failed', 'llp'), ['status' => 500]);
         }
+
+        file_put_contents($final_dir . 'meta.json', wp_json_encode([
+            'transform' => $transform,
+            'sha256'    => $sha256,
+            'renderer'  => $renderer_type,
+        ]));
+        @unlink($tmp_dir . 'meta.json');
 
         $sec = Security::instance();
         return rest_ensure_response([
