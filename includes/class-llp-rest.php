@@ -106,7 +106,7 @@ class REST {
         $dpi       = (int) get_post_meta($variation_id, '_llp_output_dpi', true) ?: 300;
 
         $renderer = Renderer::instance();
-        $renderer->render([
+        $result = $renderer->render([
             'base_path'    => $base_path,
             'mask_path'    => $mask_path,
             'user_img'     => $final_dir . 'original.png',
@@ -116,6 +116,10 @@ class REST {
             'out_composite'=> $final_dir . 'composite.png',
             'out_thumb'    => $final_dir . 'thumb.jpg',
         ]);
+        if (!$result) {
+            return new \WP_Error('render_failed', __('Rendering failed', 'llp'), ['status' => 500]);
+        }
+
         return rest_ensure_response([
             'asset_id'      => $asset_id,
             'original_url'  => $storage->asset_url($asset_id, 'original.png'),
