@@ -116,8 +116,6 @@ class REST {
             'out_composite'=> $final_dir . 'composite.png',
             'out_thumb'    => $final_dir . 'thumb.jpg',
         ]);
-
-        $storage = Storage::instance();
         return rest_ensure_response([
             'asset_id'      => $asset_id,
             'original_url'  => $storage->asset_url($asset_id, 'original.png'),
