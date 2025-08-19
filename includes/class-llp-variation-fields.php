@@ -35,6 +35,7 @@ class Variation_Fields {
             'closeText'  => __('Close', 'llp'),
             'widthText'  => __('Width (px)', 'llp'),
             'heightText' => __('Height (px)', 'llp'),
+            'rotationText' => __('Rotation (deg)', 'llp'),
         ]);
         wp_enqueue_style('llp-admin', LLP_URL . 'assets/css/admin.css', [], LLP_VER);
     }
