@@ -37,10 +37,31 @@ class Frontend {
         }
         wp_enqueue_style('llp-frontend', LLP_URL . 'assets/css/frontend.css', [], LLP_VER);
         wp_enqueue_script('llp-frontend', LLP_URL . 'assets/js/frontend.js', [], LLP_VER, true);
+
+        global $product;
+        $variation_data = [];
+        if ($product instanceof \WC_Product && $product->is_type('variable')) {
+            foreach ($product->get_children() as $vid) {
+                $bounds  = json_decode((string) get_post_meta($vid, '_llp_bounds', true), true) ?: [];
+                $base_id = (int) get_post_meta($vid, '_llp_base_image_id', true);
+                $mask_id = (int) get_post_meta($vid, '_llp_mask_image_id', true);
+                $base    = wp_get_attachment_image_src($base_id, 'full');
+                $mask    = wp_get_attachment_image_src($mask_id, 'full');
+                $variation_data[$vid] = [
+                    'bounds' => $bounds,
+                    'base'   => $base[0] ?? '',
+                    'base_w' => $base[1] ?? 0,
+                    'base_h' => $base[2] ?? 0,
+                    'mask'   => $mask[0] ?? '',
+                ];
+            }
+        }
+
         wp_localize_script('llp-frontend', 'llp_frontend', [
             'nonce'        => wp_create_nonce('llp'),
             'upload_url'   => rest_url('llp/v1/upload'),
             'finalize_url' => rest_url('llp/v1/finalize'),
+            'variations'   => $variation_data,
         ]);
     }
 

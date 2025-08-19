@@ -1,3 +1,8 @@
 #llp-customizer{margin:1em 0;}
 #llp-customizer button{margin-top:0.5em;}
 #llp-preview img{max-width:100%;height:auto;display:block;margin-top:1em;}
+#llp-editor{position:relative;display:none;margin-top:1em;}
+#llp-editor canvas{max-width:100%;}
+#llp-editor img.llp-layer{position:absolute;top:0;left:0;max-width:100%;pointer-events:none;}
+.llp-controls{margin-top:0.5em;}
+.llp-controls button{margin-right:0.5em;}
