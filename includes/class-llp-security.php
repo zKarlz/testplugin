@@ -44,9 +44,38 @@ class Security {
         if (is_wp_error($saved)) {
             return $saved;
         }
+
         $size = getimagesize($dest);
+        $width  = $size[0];
+        $height = $size[1];
+
+        $minres = json_decode((string) get_post_meta($variation_id, '_llp_min_resolution', true), true) ?: [];
+        $min_w  = isset($minres['min_w']) ? (int) $minres['min_w'] : 0;
+        $min_h  = isset($minres['min_h']) ? (int) $minres['min_h'] : 0;
+        if (($min_w && $width < $min_w) || ($min_h && $height < $min_h)) {
+            return new \WP_Error(
+                'image_too_small',
+                sprintf(__('Image must be at least %1$d x %2$d pixels.', 'llp'), $min_w, $min_h)
+            );
+        }
+
+        $aspect = get_post_meta($variation_id, '_llp_aspect_ratio', true);
+        if ($aspect) {
+            $parts = array_map('floatval', explode(':', $aspect));
+            if (2 === count($parts) && $parts[0] > 0 && $parts[1] > 0) {
+                $expected = $parts[0] / $parts[1];
+                $actual   = $width / $height;
+                if (abs($expected - $actual) > 0.01) {
+                    return new \WP_Error(
+                        'invalid_aspect_ratio',
+                        sprintf(__('Image must have an aspect ratio of %s.', 'llp'), $aspect)
+                    );
+                }
+            }
+        }
+
         $hash = hash_file('sha256', $dest);
-        return ['width' => $size[0], 'height' => $size[1], 'sha256' => $hash];
+        return ['width' => $width, 'height' => $height, 'sha256' => $hash];
     }
 
     /**
