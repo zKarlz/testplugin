@@ -20,19 +20,19 @@ class REST {
         register_rest_route('llp/v1', '/upload', [
             'methods'             => 'POST',
             'callback'            => [$this, 'handle_upload'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => [$this, 'permission_check'],
         ]);
 
         register_rest_route('llp/v1', '/finalize', [
             'methods'             => 'POST',
             'callback'            => [$this, 'handle_finalize'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => [$this, 'permission_check'],
         ]);
 
         register_rest_route('llp/v1', '/file/(?P<asset_id>[a-f0-9\-]+)/(?P<file>[\w\.]+)', [
             'methods'             => 'GET',
             'callback'            => [$this, 'serve_file'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => [$this, 'file_permission_check'],
             'args'                => [
                 'asset_id' => ['sanitize_callback' => 'sanitize_text_field'],
                 'file'     => ['sanitize_callback' => 'sanitize_file_name'],
@@ -52,11 +52,58 @@ class REST {
     }
 
     /**
+     * Basic IP/user based rate limiting.
+     */
+    private function rate_limit(string $action) {
+        $ip    = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : '0.0.0.0';
+        $user  = is_user_logged_in() ? 'user_' . get_current_user_id() : 'ip_' . md5($ip);
+        $key   = 'llp_rl_' . $action . '_' . $user;
+        $count = (int) get_transient($key);
+        if ($count >= 10) {
+            return new \WP_Error('rate_limited', __('Too many requests', 'llp'), ['status' => 429]);
+        }
+        set_transient($key, $count + 1, MINUTE_IN_SECONDS);
+        return true;
+    }
+
+    /**
+     * Permission check for mutating requests.
+     */
+    public function permission_check(\WP_REST_Request $request) {
+        if (!wp_verify_nonce($request->get_param('nonce'), 'llp')) {
+            return new \WP_Error('invalid_nonce', __('Invalid nonce', 'llp'), ['status' => 403]);
+        }
+        $settings = Settings::instance();
+        if ('private' === $settings->get('storage')) {
+            if (!is_user_logged_in() || !current_user_can('upload_files')) {
+                return new \WP_Error('forbidden', __('Authentication required.', 'llp'), ['status' => 401]);
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Permission check for serving files.
+     */
+    public function file_permission_check(\WP_REST_Request $request) {
+        $asset_id = $request['asset_id'];
+        $file     = $request['file'];
+        $token    = $request->get_param('token');
+        $expires  = (int) $request->get_param('expires');
+        $sec      = Security::instance();
+        if (!$token || !$sec->verify($asset_id, $file, $expires, $token)) {
+            return new \WP_Error('forbidden', __('Invalid token.', 'llp'), ['status' => 403]);
+        }
+        return true;
+    }
+
+    /**
      * Handle file upload to temp storage.
      */
     public function handle_upload(\WP_REST_Request $request) {
-        if (!wp_verify_nonce($request->get_param('nonce'), 'llp')) {
-            return new \WP_Error('invalid_nonce', __('Invalid nonce', 'llp'), ['status' => 403]);
+        $limited = $this->rate_limit('upload');
+        if (is_wp_error($limited)) {
+            return $limited;
         }
         $variation_id = absint($request->get_param('variation_id'));
         $files = $request->get_file_params();
@@ -82,8 +129,9 @@ class REST {
      * Finalize upload and render composites.
      */
     public function handle_finalize(\WP_REST_Request $request) {
-        if (!wp_verify_nonce($request->get_param('nonce'), 'llp')) {
-            return new \WP_Error('invalid_nonce', __('Invalid nonce', 'llp'), ['status' => 403]);
+        $limited = $this->rate_limit('finalize');
+        if (is_wp_error($limited)) {
+            return $limited;
         }
         $asset_id    = sanitize_text_field($request->get_param('asset_id'));
         $variation_id = absint($request->get_param('variation_id'));
@@ -132,12 +180,6 @@ class REST {
     public function serve_file(\WP_REST_Request $request) {
         $asset_id = $request['asset_id'];
         $file     = $request['file'];
-        $token    = $request->get_param('token');
-        $expires  = (int) $request->get_param('expires');
-        $sec      = Security::instance();
-        if (!$token || !$sec->verify($asset_id, $file, $expires, $token)) {
-            return new \WP_Error('forbidden', __('Invalid token.', 'llp'), ['status' => 403]);
-        }
         $path = Storage::instance()->asset_dir($asset_id) . $file;
         if (!file_exists($path)) {
             return new \WP_Error('not_found', __('File not found', 'llp'), ['status' => 404]);
